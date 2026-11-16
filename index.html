@@ -167,7 +167,7 @@ textarea{resize:vertical;min-height:76px}
 
       <div style="position:absolute;left:-9999px" aria-hidden="true"><label>No llenar<input type="text" id="website" tabindex="-1" autocomplete="off"></label></div>
       <p class="err" id="err" role="alert"></p>
-      <button class="send" type="submit">Anótalo ✦</button>
+      <button class="send" type="submit">Guardar y avisar a Ani ✦</button>
     </form>
 
     <div class="done" id="done" aria-live="polite">
@@ -189,6 +189,7 @@ textarea{resize:vertical;min-height:76px}
 /* ========= LO ÚNICO QUE SE EDITA ========= */
 var WA_NUMBER = "56932080136";            // WhatsApp de Ani, solo números, con código de país (Chile: 56 + 9 + número)
 var SCRIPT_URL = "https://formsubmit.co/ajax/anissia3010@gmail.com";   // las respuestas llegan a tu correo y Claude las agenda solo
+var CALLMEBOT_KEY = "";   // clave de CallMeBot: con ella te llega un WhatsApp automático cuando alguien completa el formulario
 var CALENDAR_EMAIL = "anissia3010@gmail.com"; // calendario donde se agendan los cumples
 var POSTRES = ["Brownie","Torta de zapallo","Torta tres leches","Carrot cake","Cheesecake","Tiramisú"];
 var POSTRES_OLD = ["Cheesecake keto","Brownie de chocolate","Tiramisú","Mousse de chocolate","Torta de zanahoria","Alfajores","Galletas","Helado","Panna cotta","Lo que tú hagas 😍","No soy de postres"];
@@ -392,20 +393,27 @@ $("form").addEventListener("submit",function(e){
   $("waLink").href="https://wa.me/"+WA_NUMBER+"?text="+encodeURIComponent(msg);
   var btn=document.querySelector(".send");
   if(SCRIPT_URL){
+    var waMsg="🎂 ¡Hola Ani! Ya completé tu formulario de cumpleaños 💛\nSoy "+nombre+" y mi cumple es el "+d+" de "+MESES[m-1]+".";
+    var waUrl="https://wa.me/"+WA_NUMBER+"?text="+encodeURIComponent(waMsg);
+    try{ window.open(waUrl,"_blank"); }catch(x){}
     btn.disabled=true; btn.textContent="Guardando…";
     var L=window.LAST, resumen=msg.split("\n\n📲")[0];
     var payload={_subject:"CUMPLE-FORM · "+L.nombre,_captcha:"false",_template:"box",_honey:L.website||"",
       resumen:resumen, datos_json:JSON.stringify({nombre:L.nombre,correo:L.correo,direccion:L.direccion,dia:L.dia,mes:L.mes,hobbies:L.hobbies,colores:L.colores,postre:L.postre,regalo:L.regalo,deseo:L.deseo,hijos:L.hijos})};
-    fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)})
+    fetch(SCRIPT_URL,{method:"POST",keepalive:true,headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)})
       .then(function(r){ if(!r.ok) throw new Error("http "+r.status); return r.json().catch(function(){return {}}); })
       .then(function(){
-        $("doneMsg").textContent="Tus respuestas ya me llegaron y voy a agendar tu cumple. Último paso: toca el botón para avisarme por WhatsApp que ya lo completaste.";
+        if(CALLMEBOT_KEY){
+          var aviso="🎂 ¡Nueva respuesta! "+nombre+" completó tu formulario de cumpleaños.\n📅 Cumple: "+L.dia+" de "+MESES[L.mes-1]+(L.hijos.length?"\n👶 Hijos: "+L.hijos.map(function(k){return k.n}).join(", "):"")+"\n📧 Los detalles completos están en tu correo.";
+          try{ fetch("https://api.callmebot.com/whatsapp.php?phone=%2B"+WA_NUMBER+"&text="+encodeURIComponent(aviso)+"&apikey="+encodeURIComponent(CALLMEBOT_KEY),{mode:"no-cors"}).catch(function(){}); }catch(x){}
+        }
+        $("doneMsg").textContent="¡Listo! Tus respuestas ya me llegaron y voy a agendar tu cumple 💛 Se abrió WhatsApp con un mensajito para mí: solo toca enviar. Si no se abrió, toca el botón.";
         $("copy").style.display="none"; $("preview").style.display="none";
-        $("waLink").textContent="Avisar a Ani por WhatsApp ✓";
-        $("waLink").href="https://wa.me/"+WA_NUMBER+"?text="+encodeURIComponent("🎂 ¡Hola Ani! Ya completé tu formulario de cumpleaños 💛\nSoy "+nombre+" y mi cumple es el "+L.dia+" de "+MESES[L.mes-1]+".");
+        $("waLink").textContent="Abrir WhatsApp 💌";
+        $("waLink").href=waUrl;
         mostrarListo(nombre,true);
       })
-      .catch(function(){ btn.disabled=false; btn.textContent="Anótalo ✦"; mostrarListo(nombre); });
+      .catch(function(){ btn.disabled=false; btn.textContent="Guardar y avisar a Ani ✦"; mostrarListo(nombre); });
     return;
   }
   mostrarListo(nombre);
@@ -415,7 +423,7 @@ function mostrarListo(nombre,auto){
   $("who").textContent=nombre.split(" ")[0];
   $("form").style.display="none";
   document.querySelector(".box>p").style.display="none";
-  document.querySelector(".box h2").innerHTML="Último <em>paso</em>";
+  document.querySelector(".box h2").innerHTML=auto?"Todo <em>listo</em>":"Último <em>paso</em>";
   $("done").classList.add("show");
   window.scrollTo({top:0,behavior:"smooth"});
   confetti();
